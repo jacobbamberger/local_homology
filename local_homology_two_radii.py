@@ -258,7 +258,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		else:
 			print('Tried to transform before fitting.')
 
-		return self.dim_vects 
+		return np.hstack((X, self.dim_vects))
 
 
     
