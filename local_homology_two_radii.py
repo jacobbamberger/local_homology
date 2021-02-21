@@ -300,8 +300,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		minval = 0 
 		maxval = np.inf 
 
-		far_vect = np.ones(len(membership_vect)) - membership_vect
-		new_row = np.where(far_vect == 0, maxval, minval)
+		new_row = np.where(membership_vect == 1, maxval, minval)
 
 		new_col = np.concatenate((new_row, [0]))
 		pre_augm_loc_mat = np.concatenate((loc_mat, [new_row]))

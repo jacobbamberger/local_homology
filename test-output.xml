@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="0" hostname="Jacobs-MacBook-Pro" name="pytest" skipped="0" tests="1" time="9.704" timestamp="2021-02-21T16:19:42.469044"><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_local_homology_nb_neighbours" time="6.876"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_nb_neighbours:
+
+  - during reuse phase (0.05 seconds):
+    - Typical runtimes: 3-13 ms, ~ 17% in data generation
+    - 7 passing examples, 0 failing examples, 0 invalid examples
+
+  - during generate phase (6.82 seconds):
+    - Typical runtimes: 3-34 ms, ~ 21% in data generation
+    - 493 passing examples, 0 failing examples, 23 invalid examples
+
+  - Stopped because settings.max_examples=500"/></properties></testcase></testsuite></testsuites>
