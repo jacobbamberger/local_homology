@@ -144,8 +144,18 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 			elif self.neighborhood == 'epsilon_ball':
 				self.radii = (0.01, 0.1)
 				warnings.warn('epsilon1 and epsilon2 parameters not entered. This choice depends on your dataset')
-			else:
-				print('User defined neighborhood needs user defined hyperparameters.')
+			#else:
+			#	print('User defined neighborhood needs user defined hyperparameters.')
+		elif self.radii[0]>self.radii[1]:
+			warnings.warn('First radius should be strictly smaller than second. The values are permuted')
+			self.radii = (self.radii[1], self.radii[0])
+		if self.radii[1]==0:
+			warnings.warn('Second radius has to be strictly greater than 0. Second radius set to 1.')
+			self.radii=(self.radii[0], 1)
+		#elif self.radii[0] == self.radii[1]:
+		#	warnings.warn('First radius should be strictly smaller than second.') #what to do in this case?
+
+
 
 
 		if self.vectorizer is None:
@@ -198,6 +208,11 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 			self.X_mat = pairwise_distances(X, metric = self.metric) #CHANGE THIS
 		self.check_is_fitted = True
 		self.size = len(X)
+		if self.neighborhood == 'nb_neighbours' and self.size <= self.radii[0]:
+			warnings.warn('First radius is too large to be relevant. Consider reducing it')
+			self.radii=(self.size-1, self.size)
+		if self.neighborhood =='epsilon_ball' and np.max(self.X_mat)<=self.radii[0]:
+			warnings.warn('First radius is too large to be relevant. Consider reducing it')
 		return self
 
 	def transform(self, X):

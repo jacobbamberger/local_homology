@@ -1,11 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="0" hostname="Jacobs-MacBook-Pro" name="pytest" skipped="0" tests="1" time="9.704" timestamp="2021-02-21T16:19:42.469044"><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_local_homology_nb_neighbours" time="6.876"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_nb_neighbours:
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="0" hostname="Jacobs-MacBook-Pro" name="pytest" skipped="0" tests="2" time="20.929" timestamp="2021-02-22T15:52:35.692783"><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="50" name="test_local_homology_nb_neighbours" time="9.157"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_nb_neighbours:
 
-  - during reuse phase (0.05 seconds):
-    - Typical runtimes: 3-13 ms, ~ 17% in data generation
-    - 7 passing examples, 0 failing examples, 0 invalid examples
+  - during reuse phase (0.01 seconds):
+    - Typical runtimes: ~ 6ms, ~ 23% in data generation
+    - 1 passing examples, 0 failing examples, 0 invalid examples
 
-  - during generate phase (6.82 seconds):
-    - Typical runtimes: 3-34 ms, ~ 21% in data generation
-    - 493 passing examples, 0 failing examples, 23 invalid examples
+  - during generate phase (9.14 seconds):
+    - Typical runtimes: 3-42 ms, ~ 20% in data generation
+    - 499 passing examples, 0 failing examples, 18 invalid examples
+
+  - Stopped because settings.max_examples=500"/></properties></testcase><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="82" name="test_local_homology_epsilon_ball" time="8.609"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_epsilon_ball:
+
+  - during generate phase (8.61 seconds):
+    - Typical runtimes: 4-36 ms, ~ 21% in data generation
+    - 500 passing examples, 0 failing examples, 8 invalid examples
 
   - Stopped because settings.max_examples=500"/></properties></testcase></testsuite></testsuites>
