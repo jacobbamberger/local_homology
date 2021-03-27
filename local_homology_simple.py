@@ -2,7 +2,7 @@ from numbers import Real
 from types import FunctionType
 
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, cdist
 
 from gtda.homology import VietorisRipsPersistence
 # Plotting functions
@@ -36,6 +36,7 @@ from gtda.utils.validation import validate_params, check_point_clouds
 
 
 
+
 class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 	"""
 	
@@ -52,8 +53,8 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
     ----------
     metric : string or callable, optional, default: ``'euclidean'``
         If set to ``'precomputed'``, input data is to be interpreted as a
-        collection of distance matrices or of adjacency matrices of weighted
-        undirected graphs. Otherwise, input data is to be interpreted as a
+        distance matrix or adjacency matrix of weighted undirected graphs. 
+        Otherwise, input data is to be interpreted as a
         a point cloud (i.e. feature arrays), and `metric`
         determines a rule with which to calculate distances between pairs of
         points (i.e. row vectors). If `metric` is a string, it must be one of
@@ -100,16 +101,20 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 	_hyperparameters = {
 		'metric': {'type': (str, FunctionType)},
 		'neighborhood': {'type': str},
-		'neighborhood_params': {'type': dict, 
-			'of': {'type': Real, 'in': Interval(0, np.inf, closed='left')}
-			} 
+		'radii': {
+			'type': tuple, 
+			'of': {'type': Real, 'in': Interval(0, np.inf, closed='left')} 
+			}, 
+		'homology_dimensions': {
+			'type': (tuple, list), 
+			'of': {'type': int, 'in': Interval(0, np.inf, closed='left')} 
+			}
 		}
 		#'homology': {'type': } how do I check for transformers???
 
 
-	def __init__(self, metric = 'euclidean', neighborhood = 'nb_neighbours', radii=None, 
-		homology=None , vectorizer=None,   #pre_defined objects
-		n_jobs=None):
+	def __init__(self, metric = 'euclidean', neighborhood = 'nb_neighbours', radii=None, homology_dimensions=None,
+		homology=None, vectorizer=None, n_jobs=None):
 
 		#metric of general point cloud
 		self.metric = metric
@@ -117,6 +122,8 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		#type of neighborhood to consider
 		self.neighborhood = neighborhood
 		self.radii = radii
+
+		self.homology_dimensions = homology_dimensions
 
 		#persistence homology tool
 		self.homology = homology 
@@ -127,23 +134,26 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		self.modified_persistence = False
 
 		
-		
 		self.check_is_fitted = False
 		self.check_is_transformed = False
 		self.dgms = None
 
 		self.n_jobs = n_jobs
 
+		if self.homology_dimensions is None:
+			self.homology_dimensions = (0, 1, 2,)
 
 		if self.homology is None:
-			self.homology = VietorisRipsPersistence(metric="precomputed", collapse_edges=True, homology_dimensions=(0, 1, 2), n_jobs=self.n_jobs)
+			self.homology = VietorisRipsPersistence(metric="precomputed", collapse_edges=True, homology_dimensions=self.homology_dimensions, n_jobs=self.n_jobs)
+		else:
+			self.homology_dimensions = self.homology.homology_dimensions 
 
 		if self.radii is None:
 			if self.neighborhood == 'nb_neighbours':
 				self.radii= (10, 50)
 			elif self.neighborhood == 'epsilon_ball':
 				self.radii = (0.01, 0.1)
-				warnings.warn('epsilon1 and epsilon2 parameters not entered. This choice depends on your dataset')
+				warnings.warn('Range parameter not entered. Empirically, range[1] should encircle at least 10 points.')
 			#else:
 			#	print('User defined neighborhood needs user defined hyperparameters.')
 		elif self.radii[0]>self.radii[1]:
@@ -196,23 +206,32 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		#validate_params(	
 		#	self.get_params(), self._hyperparameters, exclude=['homology', 'homology_params', 'vectorizer', 'n_jobs'])
 
+		validate_params(
+			self.get_params(), self._hyperparameters, exclude=['homology_dimensions', 
+			'homology', 'vectorizer', 'homology__coeff', 'collapse_edges', 'homology__collapse_edges',
+			'homology__homology_dimensions', 'homology__infinity_values', 'homology__max_edge_length',
+			'homology__metric', 'homology__n_jobs', 'homology__reduced_homology',
+			'vectorizer__n_jobs', 'vectorizer__nan_fill_value', 'vectorizer__normalize',
+			'n_jobs'])
 		self._is_precomputed = self.metric == 'precomputed'
+		check_point_clouds(np.array([X]), accept_sparse=False, #is there a check_point_cloud?
+			distance_matrices=self._is_precomputed)
 
-		#check_point_clouds(X, accept_sparse=True,
-		#	distance_matrices=self._is_precomputed)
 
 
 		if self.metric == 'precomputed':
 			self.X_mat = np.array(X)
 		else:
-			self.X_mat = pairwise_distances(X, metric = self.metric) #CHANGE THIS
+			self.X = np.array(X)
+			self.X_mat = squareform(pdist(X, metric=self.metric))
+			#pairwise_distances(X, metric = self.metric) #CHANGE THIS
 		self.check_is_fitted = True
 		self.size = len(X)
 		if self.neighborhood == 'nb_neighbours' and self.size <= self.radii[0]:
-			warnings.warn('First radius is too large to be relevant. Consider reducing it')
+			warnings.warn('First radius is too large to be relevant. Consider reducing it.')
 			self.radii=(self.size-1, self.size)
 		if self.neighborhood =='epsilon_ball' and np.max(self.X_mat)<=self.radii[0]:
-			warnings.warn('First radius is too large to be relevant. Consider reducing it')
+			warnings.warn('First radius is too large to be relevant. Consider reducing it.')
 		return self
 
 	def transform(self, X):
@@ -254,12 +273,12 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 
 		"""
 
-		if self.check_is_fitted:
+		if self.check_is_fitted: #check that transform on same X as before? 
 			self.check_is_transformed = True
-			loc_mats, small_neighbs = self._memberships()
+			loc_mats, small_neighbs = self._memberships(X)
 
 			self.coned_mats = Parallel(n_jobs=self.n_jobs)(delayed(self._cone_off_mat)
-				(loc_mats[i], small_neighbs[i]) for i in range(self.size) ) 
+				(loc_mats[i], small_neighbs[i]) for i in range(len(X)) ) 
 			self.diags = self.homology.fit_transform(self.coned_mats) 
 
 			if self.modified_persistence:
@@ -273,24 +292,38 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 
 
     
-	def _memberships(self):
+	def _memberships(self, X):
 		#First compute the membership matrix for the large neighborhood. large_neighbs is a binary matrix
 		#where the ij th entry is 1 iff the jth point is in the large neighborhood of the ith point unless i=j.
+		if self._is_precomputed:
+			dist_mat = self.X_mat
+		else:
+			dist_mat = cdist(X, self.X, metric=self.metric)
+			if dist_mat.shape[0] < dist_mat.shape[1]:
+				padding = np.zeros((dist_mat.shape[1]-dist_mat.shape[0], dist_mat.shape[1]))
+				dist_mat = np.vstack((dist_mat, padding))
+			elif dist_mat.shape[0] > dist_mat.shape[1]:
+				padding = (np.max(dist_mat)+1)*np.ones((dist_mat.shape[0], dist_mat.shape[0]-dist_mat.shape[1]))
+				dist_mat = np.hstack((dist_mat, padding))
+
+
 		if self.neighborhood == 'nb_neighbours':
-			large_neighbs = kneighbors_graph(self.X_mat, n_neighbors=min(self.size-1, self.radii[1]), metric='precomputed', include_self=False, n_jobs=self.n_jobs ).toarray() #USE CSR SCIPY
+			large_neighbs = kneighbors_graph(dist_mat, n_neighbors=min(self.size-1, self.radii[1]), metric='precomputed', include_self=True, n_jobs=self.n_jobs).toarray() #USE CSR SCIPY
 		elif self.neighborhood == 'epsilon_ball':
-			large_neighbs = radius_neighbors_graph(self.X_mat, radius=self.radii[1], metric='precomputed', include_self=False, n_jobs=self.n_jobs).toarray()
+			large_neighbs = radius_neighbors_graph(dist_mat, radius=self.radii[1], metric='precomputed', include_self=True, n_jobs=self.n_jobs).toarray()
 		else:
 			warnings.warn('Unrecognized neighbourhood method, using default.')
-			large_neighbs = kneighbors_graph(self.X_mat, n_neighbors=50, metric='precomputed', include_self=False, n_jobs=self.n_jobs).toarray() #is this line already covered?
+			large_neighbs = kneighbors_graph(dist_mat, n_neighbors=min(self.size-1, 50) , metric='precomputed', include_self=True, n_jobs=self.n_jobs).toarray() #is this line already covered?
 
 		#Collect indices of the points in the large neighborhood. Construct the local distance matrix (with the point considered as first entry).
-		loc_inds = [np.concatenate(([i], np.nonzero(large_neighbs[i])[0]), axis=0) for i in range(self.size)] #PARALLELIZE
-		loc_mats = np.array([self.X_mat[np.ix_(loc_ind, loc_ind)] for loc_ind in loc_inds]) #PARALLELIZE
+		#loc_inds = [np.concatenate(([i], np.nonzero(large_neighbs[i])[0]), axis=0) for i in range(len(X))] #PARALLELIZE, includeself??!!!
+		loc_inds = [np.nonzero(large_neighbs[i])[0] for i in range(len(X))] #calling np.nonzero gives a mesh already....
+		loc_mats = np.array([self.X_mat[np.ix_(loc_inds[i], loc_inds[i])] for i in range(len(X))]) #PARALLELIZE
+
 
 
 		#Now looks at small neighborhood. Computes the indices of small neighborhood for each element of loc_mats.
-		if self. neighborhood == 'nb_neighbours':
+		"""if self.neighborhood == 'nb_neighbours':
 			small_neighbs = Parallel(n_jobs=self.n_jobs)(delayed(np.where)
 				(loc_mat[0] <= np.partition(loc_mat[0], self.radii[0]-1)[self.radii[0]-1], 1, 0) for loc_mat in loc_mats ) #[np.where(loc_mat[0]<np.partition(loc_mat[0], self.neighborhood_params['nb_neighbours'])[self.neighborhood_params['nb_neighbours']], 1, 0) for loc_mat in loc_mats] #PARALLELIZE THIS
 		elif self.neighborhood == 'epsilon_ball':
@@ -298,16 +331,24 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 				(loc_mat[0] <= self.radii[0], 1, 0) for loc_mat in loc_mats ) #[np.where(loc_mat[0] < self.neighborhood_params['epsilon'], 1, 0) for loc_mat in loc_mats] #1 is inside small neighborhood, 0 if not. What about point itself? seems like it is
 		else:
 			warnings.warn('Unrecognized neighbourhood method, using default.')
-			large_neighbs = kneighbors_graph(self.X_mat, n_neighbors=10, metric='precomputed', include_self=False, n_jobs=self.n_jobs).toarray()
+			large_neighbs = kneighbors_graph(self.X_mat, n_neighbors=10, metric='precomputed', include_self=False, n_jobs=self.n_jobs).toarray()"""
+
+		if self.neighborhood == 'nb_neighbours':
+			small_neighbs = Parallel(n_jobs=self.n_jobs)(delayed(np.where)
+				(dist_mat[i][np.ix_[loc_inds[i]]] <= np.partition(loc_mat[0], self.radii[0]-1)[self.radii[0]-1], 1, 0) for i in range(len(X)) )
+		elif self.neighborhood == 'epsilon_ball':
+			small_neighbs = Parallel(n_jobs=self.n_jobs)(delayed(np.where)
+				(dist_mat[i][np.ix_(loc_inds[i])] <= self.radii[0], 1, 0) for i in range(len(X)))
 
 		return loc_mats, small_neighbs
+
 
 
 	def _cone_off_mat(self, loc_mat, membership_vect, n=2):
 		#Given loc_mat, a distance matrix of size nxn, and binary membership vect of size n. Extends given matrix by one
 		# to size (n+1)x(n+1) with last row having distance np.inf for having a 1 in membership_vects, 0 otherwise.
 		if len(loc_mat) == 1:
-			warnings.warn('epsilon chosen is too small for some points')
+			warnings.warn('Second range entry chosen is too small for some points. Consider making it larger.')
 		minval = 0 
 		maxval = np.inf 
 
@@ -318,7 +359,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		augm_loc_mat = np.concatenate((pre_augm_loc_mat, np.array([new_col]).T), axis=1)
 		return augm_loc_mat
 
-    
+
 	def plot(self, X, dimension = None):
 		if not self.check_is_transformed:
 			self.fit_transform(X)
@@ -328,7 +369,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 			print('invalid dimension, colouring with dimension '+ str(self.homology.homology_dimensions[0]))
 			color = self.dim_vects[:, 0]
 		return self.plot_point_cloud(np.array(X), color)
-    
+
 	def plot_point_cloud(self, ndarr, color = None):
 		if ndarr.shape[1]>=3:
 			df_plot = pd.DataFrame(np.array(ndarr), columns = ["x","y","z"])
@@ -338,4 +379,12 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 			return px.scatter(df_plot, x="x", y="y", color = color)
 		else:
 			print("Cannot plot...")
+
+
+"""	def predict(self, X, use_test=False):
+		# check use_test. If false then prepare the large distance matrix setting inf to the test x test distances
+		if self.precomputed:
+			warning.warn('Cannot predict with precomputed data.')
+		if not use_test:
+			cdist(X, self.X, self.metric)"""
 

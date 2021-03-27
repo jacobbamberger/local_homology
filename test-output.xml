@@ -1,17 +1,37 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="0" hostname="Jacobs-MacBook-Pro" name="pytest" skipped="0" tests="2" time="20.929" timestamp="2021-02-22T15:52:35.692783"><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="50" name="test_local_homology_nb_neighbours" time="9.157"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_nb_neighbours:
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="0" hostname="Jacobs-MacBook-Pro" name="pytest" skipped="0" tests="4" time="9.520" timestamp="2021-03-08T20:59:34.088976"><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_lh_transform[precomputed-epsilon_ball]" time="1.505"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_lh_transform[precomputed-epsilon_ball]:
 
-  - during reuse phase (0.01 seconds):
-    - Typical runtimes: ~ 6ms, ~ 23% in data generation
-    - 1 passing examples, 0 failing examples, 0 invalid examples
+  - during generate phase (1.50 seconds):
+    - Typical runtimes: 0-13 ms, ~ 62% in data generation
+    - 100 passing examples, 0 failing examples, 201 invalid examples
+    - Events:
+      * 25.58%, Retried draw from FixedBoundedFloatStrategy(0.0, 1.0, 64).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+      * 5.98%, Retried draw from BoundedIntStrategy(0, 10).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
 
-  - during generate phase (9.14 seconds):
-    - Typical runtimes: 3-42 ms, ~ 20% in data generation
-    - 499 passing examples, 0 failing examples, 18 invalid examples
+  - Stopped because settings.max_examples=100"/></properties></testcase><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_lh_transform[precomputed-nb_neighbours]" time="1.757"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_lh_transform[precomputed-nb_neighbours]:
 
-  - Stopped because settings.max_examples=500"/></properties></testcase><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="82" name="test_local_homology_epsilon_ball" time="8.609"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_local_homology_epsilon_ball:
+  - during generate phase (1.75 seconds):
+    - Typical runtimes: 0-23 ms, ~ 60% in data generation
+    - 100 passing examples, 0 failing examples, 181 invalid examples
+    - Events:
+      * 19.22%, Retried draw from FixedBoundedFloatStrategy(0.0, 1.0, 64).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+      * 11.74%, Retried draw from BoundedIntStrategy(0, 10).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
 
-  - during generate phase (8.61 seconds):
-    - Typical runtimes: 4-36 ms, ~ 21% in data generation
-    - 500 passing examples, 0 failing examples, 8 invalid examples
+  - Stopped because settings.max_examples=100"/></properties></testcase><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_lh_transform[euclidean-epsilon_ball]" time="1.483"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_lh_transform[euclidean-epsilon_ball]:
 
-  - Stopped because settings.max_examples=500"/></properties></testcase></testsuite></testsuites>
+  - during generate phase (1.48 seconds):
+    - Typical runtimes: 0-21 ms, ~ 56% in data generation
+    - 100 passing examples, 0 failing examples, 147 invalid examples
+    - Events:
+      * 19.84%, Retried draw from FixedBoundedFloatStrategy(0.0, 1.0, 64).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+      * 10.12%, Retried draw from BoundedIntStrategy(0, 10).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+
+  - Stopped because settings.max_examples=100"/></properties></testcase><testcase classname="gtda.local_homology.test_local_homology_simple" file="gtda/local_homology/test_local_homology_simple.py" line="54" name="test_lh_transform[euclidean-nb_neighbours]" time="1.528"><properties><property name="hypothesis-stats" value="gtda/local_homology/test_local_homology_simple.py::test_lh_transform[euclidean-nb_neighbours]:
+
+  - during generate phase (1.52 seconds):
+    - Typical runtimes: 0-18 ms, ~ 57% in data generation
+    - 100 passing examples, 0 failing examples, 150 invalid examples
+    - Events:
+      * 21.20%, Retried draw from FixedBoundedFloatStrategy(0.0, 1.0, 64).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+      * 8.80%, Retried draw from BoundedIntStrategy(0, 10).filter(lambda val: all(key(val) not in seen for (key, seen) in zip(self.keys, seen_sets))) to satisfy filter
+
+  - Stopped because settings.max_examples=100"/></properties></testcase></testsuite></testsuites>

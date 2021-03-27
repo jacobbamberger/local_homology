@@ -68,7 +68,7 @@ def test_lh_transform(metric, neighborhood, point_cloud, dims, epsilon_radii, nb
     lh = local_homology(metric=metric, neighborhood=neighborhood, radii=radii, homology_dimensions=dims)
     lh.fit(X)
     lh.transform(X)
-    #lh.plot(X)
+    #3lh.plot(X)
 
 
     lh2 = local_homology(metric=metric, neighborhood=neighborhood, radii=radii, homology_dimensions=dims)
