@@ -4,7 +4,7 @@ from hypothesis import given, settings
 from hypothesis.extra.numpy import arrays
 from hypothesis.strategies import floats, integers, composite, lists
 from numpy.testing import assert_almost_equal
-from scipy.sparse import coo_matrix #what is this?
+from scipy.sparse import coo_matrix
 from gtda.homology import VietorisRipsPersistence
 from scipy.spatial.distance import squareform
 

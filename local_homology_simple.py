@@ -1,37 +1,26 @@
+
 from numbers import Real
 from types import FunctionType
 
 import numpy as np
-from scipy.spatial.distance import pdist, squareform, cdist
-
-from gtda.homology import VietorisRipsPersistence
-# Plotting functions
-from gtda.plotting import plot_diagram
-#nearest neighbours:
-from sklearn.neighbors import kneighbors_graph, radius_neighbors_graph
-# Vectorize functions:
-from gtda.diagrams import features
-
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.base import ClassifierMixin, OutlierMixin, BaseEstimator, \
-                         TransformerMixin
-from sklearn.metrics import pairwise_distances
-
-import umap
-
 from joblib import Parallel, delayed
-
 import pandas as pd
 import plotly.express as px
-
 import warnings
 
+from gtda.homology import VietorisRipsPersistence
+from gtda.plotting import plot_diagram
 from gtda.diagrams.features import PersistenceEntropy
 from gtda.diagrams.preprocessing import Filtering
-
 from gtda.utils.intervals import Interval 
 from gtda.utils.validation import validate_params, check_point_clouds
+from sklearn.neighbors import kneighbors_graph, radius_neighbors_graph
+from sklearn.base import ClassifierMixin, OutlierMixin, BaseEstimator, TransformerMixin
+from scipy.spatial.distance import pdist, squareform, cdist
+
+
+
+
 
 
 
@@ -296,6 +285,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 		#First compute the membership matrix for the large neighborhood. large_neighbs is a binary matrix
 		#where the ij th entry is 1 iff the jth point is in the large neighborhood of the ith point unless i=j.
 		if self._is_precomputed:
+			warnings.warn('If metric is "precomputed", the input to "transform" is assumed to be the same input to "fit".')
 			dist_mat = self.X_mat
 		else:
 			dist_mat = cdist(X, self.X, metric=self.metric)
@@ -335,7 +325,7 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 
 		if self.neighborhood == 'nb_neighbours':
 			small_neighbs = Parallel(n_jobs=self.n_jobs)(delayed(np.where)
-				(dist_mat[i][np.ix_[loc_inds[i]]] <= np.partition(loc_mat[0], self.radii[0]-1)[self.radii[0]-1], 1, 0) for i in range(len(X)) )
+				(dist_mat[i][np.ix_(loc_inds[i])] <= np.partition(loc_mats[i][0], self.radii[0]-1)[self.radii[0]-1], 1, 0) for i in range(len(X)) )
 		elif self.neighborhood == 'epsilon_ball':
 			small_neighbs = Parallel(n_jobs=self.n_jobs)(delayed(np.where)
 				(dist_mat[i][np.ix_(loc_inds[i])] <= self.radii[0], 1, 0) for i in range(len(X)))
@@ -381,10 +371,5 @@ class local_homology(BaseEstimator, TransformerMixin): #plotterMixin?
 			print("Cannot plot...")
 
 
-"""	def predict(self, X, use_test=False):
-		# check use_test. If false then prepare the large distance matrix setting inf to the test x test distances
-		if self.precomputed:
-			warning.warn('Cannot predict with precomputed data.')
-		if not use_test:
-			cdist(X, self.X, self.metric)"""
+
 
