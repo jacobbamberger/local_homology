@@ -197,6 +197,7 @@ class local_homology(BaseEstimator, TransformerMixin):
                          'homology_dimensions', 'homology',
                          'vectorizer', 'homology__coeff',
                          'collapse_edges', 'homology__collapse_edges',
+                         'homology__metric_params',
                          'homology__homology_dimensions',
                          'homology__infinity_values',
                          'homology__max_edge_length', 'homology__metric',
@@ -204,13 +205,13 @@ class local_homology(BaseEstimator, TransformerMixin):
                          'vectorizer__n_jobs', 'vectorizer__nan_fill_value',
                          'vectorizer__normalize', 'n_jobs'])
         self._is_precomputed = self.metric == 'precomputed'
-        check_point_clouds(np.array([X]), accept_sparse=False,
+        check_point_clouds(np.array([X], dtype=object), accept_sparse=False,
                            distance_matrices=self._is_precomputed)
 
-        if self.metric == 'precomputed':
-            self.X_mat = np.array(X)
+        if self._is_precomputed:
+            self.X_mat = np.array(X, dtype=object)
         else:
-            self.X = np.array(X)
+            self.X = np.array(X, dtype=object)
             self.X_mat = squareform(pdist(X, metric=self.metric))
         self.check_is_fitted = True
         self.size = len(X)
@@ -268,6 +269,8 @@ class local_homology(BaseEstimator, TransformerMixin):
         """
 
         if self.check_is_fitted:  # Question: check_on_fitted_X?
+            check_point_clouds(np.array([X], dtype=object), accept_sparse=False,
+                        distance_matrices=self._is_precomputed)
             self.check_is_transformed = True
             loc_mats, small_neighbs = self._memberships(X)
 
@@ -340,7 +343,7 @@ class local_homology(BaseEstimator, TransformerMixin):
         loc_inds = [np.nonzero(large_neighbs[i])[0] for i in range(len(X))]
         # Question: calling np.nonzero gives a mesh already?
         loc_mats = np.array([self.X_mat[np.ix_(loc_inds[i], loc_inds[i])]
-                             for i in range(len(X))])  # PARALLELIZE
+                             for i in range(len(X))], dtype=object)  # PARALLELIZE
 
         # Now looks at small neighborhood.
         # Computes the indices of small neighborhood for elements of loc_mats.
@@ -378,7 +381,7 @@ class local_homology(BaseEstimator, TransformerMixin):
         new_col = np.concatenate((new_row, [0]))
         pre_augm_loc_mat = np.concatenate((loc_mat, [new_row]))
         augm_loc_mat = np.concatenate(
-                                     (pre_augm_loc_mat, np.array([new_col]).T),
+                                     (pre_augm_loc_mat, np.array([new_col], dtype=object).T),
                                       axis=1)
         return augm_loc_mat
 
@@ -389,20 +392,20 @@ class local_homology(BaseEstimator, TransformerMixin):
                 and dimension in self.homology.homology_dimensions:
             color = self.dim_vects[:,
                                    np.argwhere(np.array(
-                                     self.homology.homology_dimensions)
+                                     self.homology.homology_dimensions, dtype=object)
                                         == dimension)[0][0]]
         else:
             print('invalid dimension, colouring with dimension' +
                   str(self.homology.homology_dimensions[0]))
             color = self.dim_vects[:, 0]
-        return self.plot_point_cloud(np.array(X), color)
+        return self.plot_point_cloud(np.array(X, dtype=object), color)
 
     def plot_point_cloud(self, ndarr, color=None):
         if ndarr.shape[1] >= 3:
-            df_plot = pd.DataFrame(np.array(ndarr), columns=["x", "y", "z"])
+            df_plot = pd.DataFrame(np.array(ndarr, dtype=object), columns=["x", "y", "z"])
             return px.scatter_3d(df_plot, x="x", y="y", z="z", color=color)
         elif ndarr.shape[1] == 2:
-            df_plot = pd.DataFrame(np.array(ndarr), columns=["x", "y"])
+            df_plot = pd.DataFrame(np.array(ndarr, dtype=object), columns=["x", "y"])
             return px.scatter(df_plot, x="x", y="y", color=color)
         else:
             print("Cannot plot...")
