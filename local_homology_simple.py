@@ -63,14 +63,15 @@ class local_homology(BaseEstimator, TransformerMixin):
         consist of two non-negative integers, and if ``neighborhood``
         is ``epsilon_ball``, it can consist of non-negative floats.
 
-    homology_dimensions: tuple, optional, default: ``(1, 2)``. Dimensions
-        (non-negative integers) of the topological features to be detected.
 
     homology: persistence object, optional, default: VietorisRipsPersistence.
         Any instance of an object inputing a list of point clouds and
         outputting persistence diagrams when transformed. (For example
         object from homology.simplicial.py). If manually enterred, this
         overrides ``homology_dimensions``.
+
+    homology_dimensions: tuple, optional, default: ``(1, 2)``. Dimensions
+        (non-negative integers) of the topological features to be detected.
 
     vectorizer: transformer, optional, default: modified_Persistence_Entropy.
         Any transformer that inputs a list of persistence diagrams and
@@ -207,6 +208,7 @@ class local_homology(BaseEstimator, TransformerMixin):
         self._is_precomputed = self.metric == 'precomputed'
         check_point_clouds(np.array([X], dtype=object), accept_sparse=False,
                            distance_matrices=self._is_precomputed)
+                          # Question: Is there a method check_point_cloud?
 
         if self._is_precomputed:
             self.X_mat = np.array(X, dtype=object)
@@ -239,7 +241,7 @@ class local_homology(BaseEstimator, TransformerMixin):
             - Generate the persistence diagrams associated to the collection
              coned_mats, this is done using the homology object.
             - Compute the dimension vectors from the collection of diagrams
-             using the vectorizer object.
+             using 'vectorizer'.
 
         Parameters
         ----------
@@ -290,8 +292,7 @@ class local_homology(BaseEstimator, TransformerMixin):
         return np.hstack((X, self.dim_vects))
 
     def _memberships(self, X):
-        # First computes all pairwise distances between X and training data.
-
+        # Computes all pairwise distances between X and training data:
         if self._is_precomputed:
             warnings.warn('If metric is "precomputed", the input to "transform"\
                            is assumed to be the same input to "fit".')
@@ -308,10 +309,10 @@ class local_homology(BaseEstimator, TransformerMixin):
                                   dist_mat.shape[0] - dist_mat.shape[1]))
                 dist_mat = np.hstack((dist_mat, padding))
 
-        # Then compute the membership matrix for the large neighborhood.
+        # Computes the membership matrix for the large neighborhood.
         # large_neighbs is a binary matrix where the ij th entry is 1
         # if the jth point is in the large neighborhood of the ith point
-        # unless i==j.
+        # unless i==j, and is 0 otherwise.
 
         if self.neighborhood == 'nb_neighbours':
             large_neighbs = kneighbors_graph(
@@ -327,27 +328,19 @@ class local_homology(BaseEstimator, TransformerMixin):
                                  metric='precomputed',
                                  include_self=True,
                                  n_jobs=self.n_jobs).toarray()
-            # Question USE CSR SCIPY?? Dense vs sparse?
-        else:  # Question: is this already covered?
-            warnings.warn('Unrecognized neighbourhood method, using default.')
-            large_neighbs = kneighbors_graph(
-                                 dist_mat,
-                                 n_neighbors=min(self.size-1, 50),
-                                 metric='precomputed', include_self=True,
-                                 n_jobs=self.n_jobs).toarray()
+            # Question USE CSR SCIPY?? Dense vs sparse matrices?
 
-        # Collect indices of the points in the large neighborhood.
-        # Construct the local distance matrix (with the point
-        # considered as first entry).
-
+        # Collects indices of the points in the large neighborhood.
         loc_inds = [np.nonzero(large_neighbs[i])[0] for i in range(len(X))]
         # Question: calling np.nonzero gives a mesh already?
+        # Using the indices to construct the local distance matrix 
+        #(with the point considered as first entry).
         loc_mats = np.array([self.X_mat[np.ix_(loc_inds[i], loc_inds[i])]
                              for i in range(len(X))], dtype=object)  # PARALLELIZE
 
+
         # Now looks at small neighborhood.
         # Computes the indices of small neighborhood for elements of loc_mats.
-
         if self.neighborhood == 'nb_neighbours':
             small_neighbs = Parallel(n_jobs=self.n_jobs)(
                              delayed(np.where)
@@ -386,6 +379,11 @@ class local_homology(BaseEstimator, TransformerMixin):
         return augm_loc_mat
 
     def plot(self, X, dimension=None):
+      # Given a point cloud X and an non-negative integer as a dimension,
+      # plots the point cloud by colouring the points by the feature of 
+      # the selected dimension.
+      # If elements of X have more than three entries, X is first projected
+      # to the subspace consisting of its first three entries.
         if not self.check_is_transformed:
             self.fit_transform(X)
         if not(dimension is None)\
