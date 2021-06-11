@@ -7,13 +7,21 @@ import warnings
 
 from gtda.homology import VietorisRipsPersistence
 from gtda.utils.intervals import Interval
-from gtda.utils.validation import validate_params, check_point_clouds
+from gtda.utils.validation import validate_params
 from sklearn.neighbors import kneighbors_graph, radius_neighbors_graph
 from sklearn.base import BaseEstimator, TransformerMixin
 from scipy.spatial.distance import pdist, squareform, cdist
+from sklearn.utils import check_array
+from sklearn.utils.validation import check_is_fitted
 
 
-class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
+from gtda.plotting import plot_diagram
+from gtda.base import PlotterMixin
+from gtda.utils._docs import adapt_fit_transform_docs
+
+
+@adapt_fit_transform_docs
+class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin, PlotterMixin):
     """
 
     Given a :ref:`point cloud <finite_metric_spaces_and_point_clouds>` in
@@ -82,9 +90,6 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
             }
         }
 
-    # Question: How do I validate param for
-    # 'homology', when it is a transformer?
-
     def __init__(self, metric='euclidean', neighborhood='nb_neighbours',
                  radii=None, homology_dimensions=(1, 2), n_jobs=1):
 
@@ -100,9 +105,6 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
 
         self.n_jobs = n_jobs
 
-        self.check_is_fitted = False
-        self.dgms = None #is this useful?
-
         # The following object is used to compute persistence diagrams
         self.homology = VietorisRipsPersistence(
                             metric="precomputed",
@@ -110,7 +112,6 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
                             homology_dimensions=self.homology_dimensions,
                             n_jobs=self.n_jobs)
 
-            
         # The following warns if the neighborhood type is not recognized
         if self.neighborhood != 'nb_neighbours' and self.neighborhood != 'epsilon_ball':
                 warnings.warn('Unrecognized neighborhood, check spelling.')
@@ -167,38 +168,21 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
         self : object
 
         """
-        validate_params( # fix this
-            self.get_params(), self._hyperparameters, exclude=[
-                         'homology_dimensions', 'homology',
-                         'vectorizer', 'homology__coeff',
-                         'collapse_edges', 'homology__collapse_edges',
-                         'homology__metric_params',
-                         'homology__homology_dimensions',
-                         'homology__infinity_values',
-                         'homology__max_edge_length', 'homology__metric',
-                         'homology__n_jobs', 'homology__reduced_homology',
-                         'vectorizer__n_jobs', 'vectorizer__nan_fill_value',
-                         'vectorizer__normalize', 'n_jobs'])
-        self._is_precomputed = self.metric == 'precomputed'
-        check_point_clouds([X], accept_sparse=False,
-                           distance_matrices=self._is_precomputed)
-                          # Question: Is there a method check_point_cloud?
+        validate_params(
+            self.get_params(), self._hyperparameters, exclude=['n_jobs'])
+
+        self._is_precomputed = self.metric == 'precomputed' # SHould we not accept precomputed anymore...
+        check_array(X, accept_sparse=False)
 
         if self._is_precomputed:
-            self.X_mat = X #remove all np.array
+            self.X_mat = X
         else:
             self.X = X
-        #    self.X_mat = squareform(pdist(X, metric=self.metric)) #no need to store this, right?? unless precomputed
-        self.check_is_fitted = True
         self.size = len(X)
         if self.neighborhood == 'nb_neighbours' and self.size <= self.radii[0]:
             warnings.warn('First radius is too large to be relevant.\
                              Consider reducing it.')
             self.radii = (self.size-1, self.size)
-       # if self.neighborhood == 'epsilon_ball' \ #IS THIS NECESSARY??
-       #                         and np.max(self.X_mat) <= self.radii[0]:
-       #     warnings.warn('First radius is too large to be relevant.\
-       #                      Consider reducing it.')
         return self
 
     def transform(self, X):
@@ -216,7 +200,7 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
              coned_mats, this is done using the homology object.
             - Compute the dimension vectors from the collection of diagrams
              using 'vectorizer'.
-=-
+
         Parameters
         ----------
 
@@ -237,30 +221,25 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
 
         diags : persistent diagrams # Do this better!
 
-
         """
 
-        if self.check_is_fitted:  # Question: check_on_fitted_X?
-            check_point_clouds([X], accept_sparse=False,
-                        distance_matrices=self._is_precomputed)
-            self.check_is_transformed = True # do we use this?
-            loc_mats, small_neighbs = self._memberships(X) 
-            # the above line restricts to Vietoris Rips, do we want this?
+       # check_is_fitted(self) # This causes errors...
+        check_array(X, accept_sparse=False)
+        loc_mats, small_neighbs = self._memberships(X) 
 
-            self.coned_mats = Parallel(n_jobs=self.n_jobs)(
-                             delayed(self._cone_off_mat)
-                             (loc_mats[i], small_neighbs[i])
-                             for i in range(len(X)))
-            # Do we really need to store diags?
-            self.diags = self.homology.fit_transform(self.coned_mats) 
-            return self.diags
-        else:
-            print('Tried to transform before fitting.')
-
+        self.coned_mats = Parallel(n_jobs=self.n_jobs)(
+                         delayed(self._cone_off_mat)
+                         (loc_mats[i], small_neighbs[i])
+                         for i in range(len(X)))
+        Xt = self.homology.fit_transform(self.coned_mats)
+        return Xt # These are persistence diagrams
 
     def _memberships(self, X):
         # Computes all pairwise distances between X and training data:
         if self._is_precomputed:
+        	# This might change later: Users could input columns of distances 
+        	# to previous points. Could be useful if the user wants to know
+        	# the local dimension around a subset of your data.
             warnings.warn('If metric is "precomputed", the input to "transform"\
                            is assumed to be the same input to "fit".')
             dist_mat = self.X_mat
@@ -295,17 +274,15 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
                                  metric='precomputed',
                                  include_self=True,
                                  n_jobs=self.n_jobs).toarray()
-            # Question USE CSR SCIPY?? Dense vs sparse matrices?
+            # Question: Is it worth it to avoice doing .toarray()?
 
         # Collects indices of the points in the large neighborhood.
         loc_inds = [np.nonzero(large_neighbs[i])[0] for i in range(len(X))]
-        # Question: calling np.nonzero gives a mesh already?
         
         # Using the indices to construct the local distance matrix 
-        # (with the point considered as first entry).
+        # (with the point considered as first entry). Is this still true?
         loc_mats = [dist_mat[np.ix_(loc_inds[i], loc_inds[i])]
-                             for i in range(len(X))]  # PARALLELIZE THIS
-
+                             for i in range(len(X))]
 
         # Now looks at small neighborhood.
         # Computes the indices of small neighborhood for elements of loc_mats.
@@ -342,6 +319,43 @@ class LocalVietorisRipsPersistence(BaseEstimator, TransformerMixin):
         new_col = np.concatenate((new_row, [0]))
         pre_augm_loc_mat = np.concatenate((loc_mat, [new_row]))
         augm_loc_mat = np.concatenate(
-                                     (pre_augm_loc_mat, np.array([new_col], dtype=float).T), # do we really need np.array here?
+                                     (pre_augm_loc_mat, np.array([new_col], dtype=float).T),
                                       axis=1)
         return augm_loc_mat
+
+
+    @staticmethod
+    def plot(Xt, sample=0, homology_dimensions=None, plotly_params=None):
+        """Plot a sample from a collection of persistence diagrams, with
+        homology in multiple dimensions.
+
+        Parameters
+        ----------
+        Xt : ndarray of shape (n_samples, n_features, 3)
+            Collection of persistence diagrams, such as returned by
+            :meth:`transform`.
+
+        sample : int, optional, default: ``0``
+            Index of the sample in `Xt` to be plotted.
+
+        homology_dimensions : list, tuple or None, optional, default: ``None``
+            Which homology dimensions to include in the plot. ``None`` means
+            plotting all dimensions present in ``Xt[sample]``.
+
+        plotly_params : dict or None, optional, default: ``None``
+            Custom parameters to configure the plotly figure. Allowed keys are
+            ``"traces"`` and ``"layout"``, and the corresponding values should
+            be dictionaries containing keyword arguments as would be fed to the
+            :meth:`update_traces` and :meth:`update_layout` methods of
+            :class:`plotly.graph_objects.Figure`.
+
+        Returns
+        -------
+        fig : :class:`plotly.graph_objects.Figure` object
+            Plotly figure.
+
+        """
+        return plot_diagram(
+            Xt[sample], homology_dimensions=homology_dimensions,
+            plotly_params=plotly_params
+            )
