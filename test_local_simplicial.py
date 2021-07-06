@@ -10,63 +10,79 @@ from scipy.spatial.distance import squareform
 
 from local_simplicial import *
 
-
-"""@given(dims=gen_dimensions(), dm_radii=gen_local_homology_epsilon_ball())
-def test_dimensions(dims, dm_radii):
-    (dm, radii)=dm_radii
-    lh = local_homology(metric="precomputed", neighborhood='epsilon_ball', radii=radii, homology_dimensions=dims)
-    lh.fit(dm)
-    lh.transform(dm)"""
-
-#______________________________________
-
 @composite
 def gen_3d_point_cloud(draw):
-    three_floats = lists(floats(min_value=0, max_value=1), min_size=3, max_size=3, unique=True) # Shoudl Unique be false?
-    return np.array(draw(lists(three_floats, min_size=2, max_size=20))) #No Size one cloud!!!
+    """ Generates point clouds as lists of floats in the unit cube of size between 2 and 20."""
+    three_floats = lists(floats(min_value=0, max_value=1), min_size=3, max_size=3, unique=True)
+    return draw(lists(three_floats, min_size=2, max_size=20)) #No Size one cloud!!!
 
 @composite
 def gen_dimensions(draw):
-    return tuple(draw(lists(integers(min_value=0, max_value=10), min_size=1, max_size=5, unique=True)))
+    """ Generates dimension as tuples of integers."""
+    return tuple(draw(lists(integers(min_value=1, max_value=10), min_size=1, max_size=5, unique=True)))
 
 @composite
-def gen_epsilon_radii(draw):
+def gen_epsilon(draw):
+    """ Generates radii as floats. """
     epsilon1 = draw(floats(min_value = 0, max_value=1))
     epsilon2 = draw(floats(min_value = 0, max_value=1))
     return (epsilon1, epsilon2)
 
 @composite 
-def gen_nb_neighbours_radii(draw):
-    nb_neighbour1 = draw(integers(min_value = 1, max_value=20))
-    nb_neighbour2 = draw(integers(min_value = nb_neighbour1+1, max_value=30))
-    return (nb_neighbour1, nb_neighbour2)
+def gen_n_neighbors(draw):
+    """Generates number of neighbors as integers. """
+    n_neighbor1 = draw(integers(min_value = 1, max_value=20))
+    n_neighbor2 = draw(integers(min_value = 1, max_value=30))
+    return (n_neighbor1, n_neighbor2)
 
-
-
-@given(point_cloud=gen_3d_point_cloud(), point_cloud2=gen_3d_point_cloud(), dims=gen_dimensions(), epsilon_radii=gen_epsilon_radii(), nb_neighbours_radii=gen_nb_neighbours_radii())
-@pytest.mark.parametrize("neighborhood", ["epsilon_ball", "nb_neighbours"]) #, "giberish"])
-def test_lh_transform(neighborhood, point_cloud, point_cloud2, dims, epsilon_radii, nb_neighbours_radii):
-    if neighborhood == "epsilon_ball":
-        radii = epsilon_radii
-    elif neighborhood == "nb_neighbours":
-        radii = nb_neighbours_radii
-
+@settings(deadline=None)
+@given(point_cloud=gen_3d_point_cloud(), point_cloud2=gen_3d_point_cloud(), dims=gen_dimensions(), radii=gen_epsilon())
+def test_RadiusLocalVietoris(point_cloud, point_cloud2, dims, radii):
+    # fit transform on same point cloud:
     X = point_cloud
 
-    # Fit and transform on same cloud
-    lh = LocalVietorisRipsPersistence(metric='euclidean', neighborhood=neighborhood, radii=radii, homology_dimensions=dims, n_jobs=-1)
-    lh.fit_transform(X)
+    lh_rad = RadiusLocalVietorisRipsPersistence(metric='euclidean', radii=radii, homology_dimensions=dims, n_jobs=-1)
+    lh_rad.fit(X)
+    lh_rad.transform(X)
+    lh_rad = RadiusLocalVietorisRipsPersistence(metric='euclidean', radii=radii, homology_dimensions=dims, n_jobs=-1)
+    lh_rad.fit_transform(X)
 
-    
-    # fit and transform on different clouds
-    X2 = point_cloud2
-    lh2 = LocalVietorisRipsPersistence(metric='euclidean', neighborhood=neighborhood, radii=radii, homology_dimensions=dims)
-    lh2.fit(X)
-    diags = lh2.transform(X2)
+    # fit and transform on different point clouds:
+    Y = point_cloud2
+    lh_rad = RadiusLocalVietorisRipsPersistence(metric='euclidean', radii=radii, homology_dimensions=dims, n_jobs=-1)
+    lh_rad.fit(Y)
+    lh_rad.transform(X)
 
-    # lh2.plot(diags, 1) # I get an error when I plot a 'trivial' diagram on my notebook...
+    # Test the plot method
+    # lh_rad.plot(lh_rad.transform(X), sample=0 homology_dimensions=dims)
+
+# The following tests when the radii are equal
+@settings(deadline=None)
+@given(point_cloud=gen_3d_point_cloud(), dims=gen_dimensions(), radii=gen_epsilon())
+def test_equal_radius(point_cloud, dims, radii):
+    X = point_cloud
+    lh_rad = RadiusLocalVietorisRipsPersistence(metric='euclidean', radii=(radii[0], radii[0]), homology_dimensions=dims, n_jobs=-1)
+    lh_rad.fit_transform(X)
 
 
+@settings(deadline=None)
+@given(point_cloud=gen_3d_point_cloud(), point_cloud2=gen_3d_point_cloud(), dims=gen_dimensions(), n_neighbors=gen_n_neighbors())
+def test_KNeighborsLocalVietoris(point_cloud, point_cloud2, dims, n_neighbors):
+    # fit transform on same point cloud:
+    X = point_cloud
 
+    lh_kn = KNeighborsLocalVietorisRipsPersistence(metric='euclidean', n_neighbors=n_neighbors, homology_dimensions=dims, n_jobs=-1)
+    lh_kn.fit(X)
+    lh_kn.transform(X)
+    lh_kn = KNeighborsLocalVietorisRipsPersistence(metric='euclidean', n_neighbors=n_neighbors, homology_dimensions=dims, n_jobs=-1)
+    lh_kn.fit_transform(X)
 
+    # fit and transform on different point clouds:
+    Y = point_cloud2
+    lh_kn = KNeighborsLocalVietorisRipsPersistence(metric='euclidean', n_neighbors=n_neighbors, homology_dimensions=dims, n_jobs=-1)
+    lh_kn.fit(Y)
+    lh_kn.transform(X)
+
+    # Test the plot method
+    # lh_kn.plot(lh_kn.transform(Y), sample = 0, homology_dimensions=dims)
 
